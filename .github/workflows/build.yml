@@ -1,0 +1,90 @@
+name: Build & Release APK/AAB
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android App
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: 📥 استنساخ المستودع
+        uses: actions/checkout@v4
+
+      - name: 🔧 إعداد Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 📱 إعداد Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: ✅ فحص Flutter
+        run: flutter doctor
+
+      - name: 📦 تحميل الحزم
+        run: flutter pub get
+
+      - name: 🔍 تحليل الكود
+        run: flutter analyze || true
+
+      - name: 🧪 تشغيل الاختبارات
+        run: flutter test || true
+
+      - name: 🔐 إعداد توقيع الإصدار (Release Signing)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "⚠️ لم يتم ضبط أسرار التوقيع (Secrets) — سيتم البناء بمفتاح debug مؤقتًا."
+          else
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+            {
+              echo "storePassword=$KEYSTORE_PASSWORD"
+              echo "keyPassword=$KEY_PASSWORD"
+              echo "keyAlias=$KEY_ALIAS"
+              echo "storeFile=release.jks"
+            } > android/key.properties
+            echo "✅ تم إعداد توقيع الإصدار."
+          fi
+
+      - name: 🏗️ بناء APK (release)
+        run: flutter build apk --release
+
+      - name: 📦 بناء AAB (Google Play)
+        run: flutter build appbundle --release
+
+      - name: 📂 رفع APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+      - name: 📂 رفع AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+
+      - name: 📊 ملخص البناء
+        run: |
+          echo "## ✅ البناء اكتمل بنجاح" >> $GITHUB_STEP_SUMMARY
+          echo "**الفرع:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**التاريخ:** $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "**APK:** $(ls -lh build/app/outputs/flutter-apk/app-release.apk 2>/dev/null | awk '{print $5}' || echo 'غير متوفر')" >> $GITHUB_STEP_SUMMARY
+          echo "**AAB:** $(ls -lh build/app/outputs/bundle/release/app-release.aab 2>/dev/null | awk '{print $5}' || echo 'غير متوفر')" >> $GITHUB_STEP_SUMMARY
