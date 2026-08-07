@@ -60,7 +60,9 @@ jobs:
             } > android/key.properties
             echo "✅ تم إعداد توقيع الإصدار."
           fi
-
+- name: Upgrade Flutter packages
+  run: |
+    flutter pub upgrade
       - name: 🏗️ بناء APK (release)
         run: flutter build apk --release
 
