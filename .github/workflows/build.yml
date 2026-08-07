@@ -7,6 +7,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-android:
     name: Build Android App
@@ -26,17 +30,25 @@ jobs:
       - name: 📱 إعداد Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          channel: stable
           cache: true
 
       - name: ✅ فحص Flutter
         run: flutter doctor
 
-      - name: 📦 تحميل الحزم
-        run: flutter pub get
+      - name: 🧹 تنظيف كاش الحزم القديمة
+        run: |
+          flutter clean
+          rm -rf ~/.pub-cache/hosted/pub.dev/file_picker-*
 
-      - name: ⬆️ تحديث حزم Flutter
-        run: flutter pub upgrade
+      - name: 📦 تحميل الحزم
+        run: |
+          flutter pub get
+          flutter pub upgrade
+
+      - name: 🔎 تأكيد نسخة الحزم
+        run: |
+          flutter pub deps | grep file_picker || true
 
       - name: 🔍 تحليل الكود
         run: flutter analyze || true
@@ -50,9 +62,10 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "⚠️ لم يتم ضبط أسرار التوقيع (Secrets) — سيتم البناء بمفتاح debug مؤقتًا."
+            echo "⚠️ لم يتم ضبط أسرار التوقيع — سيتم البناء بمفتاح debug."
           else
             echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
 
@@ -66,10 +79,10 @@ jobs:
             echo "✅ تم إعداد توقيع الإصدار."
           fi
 
-      - name: 🏗️ بناء APK (release)
+      - name: 🏗️ بناء APK Release
         run: flutter build apk --release
 
-      - name: 📦 بناء AAB (Google Play)
+      - name: 📦 بناء AAB Release
         run: flutter build appbundle --release
 
       - name: 📂 رفع APK
@@ -88,8 +101,8 @@ jobs:
 
       - name: 📊 ملخص البناء
         run: |
-          echo "## ✅ البناء اكتمل بنجاح" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ البناء اكتمل" >> $GITHUB_STEP_SUMMARY
           echo "**الفرع:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**التاريخ:** $(date)" >> $GITHUB_STEP_SUMMARY
           echo "**APK:** $(ls -lh build/app/outputs/flutter-apk/app-release.apk 2>/dev/null | awk '{print $5}' || echo 'غير متوفر')" >> $GITHUB_STEP_SUMMARY
-          echo "**AAB:** $(ls -lh build/app/outputs/bundle/release/app-release.aab 2>/dev/null | awk '{print $5}' || echo 'غير متوفر')" >> $GITHUB_STEP_SUMMARYconcurrency: 
+          echo "**AAB:** $(ls -lh build/app/outputs/bundle/release/app-release.aab 2>/dev/null | awk '{print $5}' || echo 'غير متوفر')" >> $GITHUB_STEP_SUMMARY
