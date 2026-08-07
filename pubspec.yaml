@@ -22,7 +22,7 @@ dependencies:
   path: ^1.8.3
   intl: ^0.20.2
   uuid: ^4.2.1
-  google_fonts: ^6.1.0
+  google_fonts: ^8.1.7
   fl_chart: ^0.66.0
   shimmer: ^3.0.0
   pdf: ^3.10.7
