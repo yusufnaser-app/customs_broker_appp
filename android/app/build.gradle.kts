@@ -3,22 +3,25 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// تحميل بيانات توقيع الإصدار (release signing) من android/key.properties إن وُجد.
-// هذا الملف لا يُرفع إلى المستودع (موجود في .gitignore)؛ في CI يتم إنشاؤه من GitHub Secrets.
+// تحميل بيانات توقيع الإصدار من key.properties
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
+
 val hasKeystoreProperties = keystorePropertiesFile.exists()
+
 if (hasKeystoreProperties) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
     namespace = "com.yusufnaser.customsbroker"
-    compileSdk = flutter.compileSdkVersion
+
+    // رفعه لأن بعض الإضافات الحديثة تحتاج Android API 36
+    compileSdk = 36
+
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -28,39 +31,61 @@ android {
 
     defaultConfig {
         applicationId = "com.yusufnaser.customsbroker"
+
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+
+        // مناسب للنشر الحالي
+        targetSdk = 36
+
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     signingConfigs {
+
         if (hasKeystoreProperties) {
+
             create("release") {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
+
+                keyAlias =
+                    keystoreProperties["keyAlias"] as String
+
+                keyPassword =
+                    keystoreProperties["keyPassword"] as String
+
+                storeFile =
+                    file(keystoreProperties["storeFile"] as String)
+
+                storePassword =
+                    keystoreProperties["storePassword"] as String
             }
         }
     }
 
     buildTypes {
+
         release {
-            // يستخدم توقيع الإصدار الحقيقي إن توفر key.properties،
-            // وإلا يعود لمفتاح debug (مفيد للبناء المحلي بدون إعداد التوقيع).
-            signingConfig = if (hasKeystoreProperties) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+
+            signingConfig =
+                if (hasKeystoreProperties) {
+                    signingConfigs.getByName("release")
+                } else {
+                    signingConfigs.getByName("debug")
+                }
+
+            // تحسين حجم الإصدار
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
 
 kotlin {
+
     compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+
+        jvmTarget =
+            org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
