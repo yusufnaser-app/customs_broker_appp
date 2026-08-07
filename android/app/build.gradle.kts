@@ -6,7 +6,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// تحميل بيانات توقيع الإصدار من key.properties
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 
@@ -17,29 +16,39 @@ if (hasKeystoreProperties) {
 }
 
 android {
+
     namespace = "com.yusufnaser.customsbroker"
 
-    // رفعه لأن بعض الإضافات الحديثة تحتاج Android API 36
+    // تحديث مهم لحل مشكلة file_picker و lifecycle
     compileSdk = 36
 
     ndkVersion = flutter.ndkVersion
 
+
     compileOptions {
+
         sourceCompatibility = JavaVersion.VERSION_17
+
         targetCompatibility = JavaVersion.VERSION_17
+
     }
 
+
     defaultConfig {
+
         applicationId = "com.yusufnaser.customsbroker"
 
         minSdk = flutter.minSdkVersion
 
-        // مناسب للنشر الحالي
         targetSdk = 36
 
         versionCode = flutter.versionCode
+
         versionName = flutter.versionName
+
     }
+
+
 
     signingConfigs {
 
@@ -54,7 +63,9 @@ android {
                     keystoreProperties["keyPassword"] as String
 
                 storeFile =
-                    file(keystoreProperties["storeFile"] as String)
+                    file(
+                        keystoreProperties["storeFile"] as String
+                    )
 
                 storePassword =
                     keystoreProperties["storePassword"] as String
@@ -62,23 +73,37 @@ android {
         }
     }
 
+
+
     buildTypes {
 
         release {
 
             signingConfig =
                 if (hasKeystoreProperties) {
+
                     signingConfigs.getByName("release")
+
                 } else {
+
                     signingConfigs.getByName("debug")
+
                 }
 
-            // تحسين حجم الإصدار
+
+            // لتقليل مشاكل Gradle أثناء الإصدار
+
             isMinifyEnabled = false
+
             isShrinkResources = false
+
         }
+
     }
+
 }
+
+
 
 kotlin {
 
@@ -86,9 +111,15 @@ kotlin {
 
         jvmTarget =
             org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+
     }
+
 }
 
+
+
 flutter {
+
     source = "../.."
+
 }
