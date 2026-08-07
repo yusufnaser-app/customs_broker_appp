@@ -12,7 +12,7 @@ jobs:
     name: Build Android App
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     steps:
       - name: 📥 استنساخ المستودع
         uses: actions/checkout@v4
@@ -35,6 +35,9 @@ jobs:
       - name: 📦 تحميل الحزم
         run: flutter pub get
 
+      - name: ⬆️ تحديث حزم Flutter
+        run: flutter pub upgrade
+
       - name: 🔍 تحليل الكود
         run: flutter analyze || true
 
@@ -52,17 +55,17 @@ jobs:
             echo "⚠️ لم يتم ضبط أسرار التوقيع (Secrets) — سيتم البناء بمفتاح debug مؤقتًا."
           else
             echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+
             {
               echo "storePassword=$KEYSTORE_PASSWORD"
               echo "keyPassword=$KEY_PASSWORD"
               echo "keyAlias=$KEY_ALIAS"
               echo "storeFile=release.jks"
             } > android/key.properties
+
             echo "✅ تم إعداد توقيع الإصدار."
           fi
-- name: Upgrade Flutter packages
-  run: |
-    flutter pub upgrade
+
       - name: 🏗️ بناء APK (release)
         run: flutter build apk --release
 
@@ -89,4 +92,4 @@ jobs:
           echo "**الفرع:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**التاريخ:** $(date)" >> $GITHUB_STEP_SUMMARY
           echo "**APK:** $(ls -lh build/app/outputs/flutter-apk/app-release.apk 2>/dev/null | awk '{print $5}' || echo 'غير متوفر')" >> $GITHUB_STEP_SUMMARY
-          echo "**AAB:** $(ls -lh build/app/outputs/bundle/release/app-release.aab 2>/dev/null | awk '{print $5}' || echo 'غير متوفر')" >> $GITHUB_STEP_SUMMARY
+          echo "**AAB:** $(ls -lh build/app/outputs/bundle/release/app-release.aab 2>/dev/null | awk '{print $5}' || echo 'غير متوفر')" >> $GITHUB_STEP_SUMMARYconcurrency: 
