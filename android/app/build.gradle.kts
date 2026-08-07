@@ -16,38 +16,29 @@ if (hasKeystoreProperties) {
 }
 
 android {
-
     namespace = "com.yusufnaser.customsbroker"
 
-    // تحديث مهم لحل مشكلة file_picker و lifecycle
+    // حل مشكلة file_picker و flutter_plugin_android_lifecycle
     compileSdk = 36
 
     ndkVersion = flutter.ndkVersion
 
-
     compileOptions {
-
         sourceCompatibility = JavaVersion.VERSION_17
-
         targetCompatibility = JavaVersion.VERSION_17
-
     }
 
-
     defaultConfig {
-
         applicationId = "com.yusufnaser.customsbroker"
 
         minSdk = flutter.minSdkVersion
 
+        // توافق Android الحديث
         targetSdk = 36
 
         versionCode = flutter.versionCode
-
         versionName = flutter.versionName
-
     }
-
 
 
     signingConfigs {
@@ -74,7 +65,6 @@ android {
     }
 
 
-
     buildTypes {
 
         release {
@@ -87,22 +77,13 @@ android {
                 } else {
 
                     signingConfigs.getByName("debug")
-
                 }
 
-
-            // لتقليل مشاكل Gradle أثناء الإصدار
-
             isMinifyEnabled = false
-
             isShrinkResources = false
-
         }
-
     }
-
 }
-
 
 
 kotlin {
@@ -111,15 +92,11 @@ kotlin {
 
         jvmTarget =
             org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
-
     }
-
 }
-
 
 
 flutter {
 
     source = "../.."
-
 }
