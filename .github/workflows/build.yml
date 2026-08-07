@@ -4,14 +4,13 @@ on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - main
+
   workflow_dispatch:
 
-concurrency:
-  group: build-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build-android:
@@ -22,9 +21,10 @@ jobs:
 
     timeout-minutes: 30
 
+
     steps:
 
-      - name: 📥 Checkout
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
 
@@ -46,15 +46,15 @@ jobs:
         run: flutter doctor
 
 
-      - name: 📦 Get packages
+      - name: 📦 Get Flutter packages
         run: flutter pub get
 
 
-      - name: 🔍 Analyze
+      - name: 🔍 Analyze code
         run: flutter analyze || true
 
 
-      - name: 🧪 Tests
+      - name: 🧪 Run tests
         run: flutter test || true
 
 
@@ -69,29 +69,29 @@ jobs:
 
           if [ -z "$KEYSTORE_BASE64" ]; then
 
-            echo "No signing key found, using debug signing"
+            echo "⚠️ No keystore found. Using debug signing."
 
           else
 
             echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
 
-            cat <<EOF > android/key.properties
-storePassword=$KEYSTORE_PASSWORD
-keyPassword=$KEY_PASSWORD
-keyAlias=$KEY_ALIAS
-storeFile=release.jks
-EOF
 
-            echo "Release signing configured"
+            echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
+            echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
+            echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+            echo "storeFile=release.jks" >> android/key.properties
+
+
+            echo "✅ Release signing configured."
 
           fi
 
 
-      - name: 🏗️ Build APK
+      - name: 🏗️ Build APK Release
         run: flutter build apk --release
 
 
-      - name: 📦 Build AAB
+      - name: 📦 Build AAB Release
         run: flutter build appbundle --release
 
 
@@ -114,6 +114,6 @@ EOF
       - name: 📊 Build Summary
         run: |
 
-          echo "## ✅ Build Completed" >> $GITHUB_STEP_SUMMARY
+          echo "## ✅ Build Completed Successfully" >> $GITHUB_STEP_SUMMARY
           echo "Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "Date: $(date)" >> $GITHUB_STEP_SUMMARY
