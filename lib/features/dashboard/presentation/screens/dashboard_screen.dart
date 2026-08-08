@@ -2,6 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../declarations/presentation/screens/declarations_list_screen.dart';
+import '../../../clients/presentation/screens/clients_list_screen.dart';
+import '../../../banks/presentation/screens/banks_screen.dart';
+import '../../../fund/presentation/screens/fund_dashboard_screen.dart';
+import '../../../invoices/presentation/screens/invoices_list_screen.dart';
+import '../../../revenues/presentation/screens/revenues_screen.dart';
+import '../../../expenses/presentation/screens/expenses_screen.dart';
+import '../../../users/presentation/screens/users_screen.dart';
+import '../../../subscriptions/presentation/screens/subscription_screen.dart';
+import '../../../reports/presentation/screens/reports_screen.dart';
+import '../../../notifications/presentation/screens/notifications_screen.dart';
+import '../../../about/presentation/screens/about_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -12,13 +24,13 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
-  
-  final List<Widget> _screens = [
-    const _DashboardHomeTab(),
-    const Center(child: Text('الإقرارات', style: TextStyle(fontSize: 24))),
-    const Center(child: Text('العملاء', style: TextStyle(fontSize: 24))),
-    const Center(child: Text('المالية', style: TextStyle(fontSize: 24))),
-    const Center(child: Text('المزيد', style: TextStyle(fontSize: 24))),
+
+  final List<Widget> _screens = const [
+    _DashboardHomeTab(),
+    DeclarationsListScreen(),
+    ClientsListScreen(),
+    _FinanceHubTab(),
+    _MoreHubTab(),
   ];
 
   @override
@@ -275,6 +287,90 @@ class _DashboardHomeTab extends StatelessWidget {
             style: GoogleFonts.cairo(
               fontSize: 11,
               color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FinanceHubTab extends StatelessWidget {
+  const _FinanceHubTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <_HubItem>[
+      _HubItem('الصندوق والبنوك', Icons.account_balance_wallet_rounded, (ctx) => const FundDashboardScreen()),
+      _HubItem('الفواتير', Icons.receipt_long_rounded, (ctx) => const InvoicesListScreen()),
+      _HubItem('الإيرادات', Icons.trending_up_rounded, (ctx) => const RevenuesScreen()),
+      _HubItem('المصروفات', Icons.trending_down_rounded, (ctx) => const ExpensesScreen()),
+      _HubItem('البنوك', Icons.account_balance_rounded, (ctx) => const BanksScreen()),
+    ];
+    return _HubList(title: 'المالية', items: items);
+  }
+}
+
+class _MoreHubTab extends StatelessWidget {
+  const _MoreHubTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <_HubItem>[
+      _HubItem('المستخدمون', Icons.people_alt_rounded, (ctx) => const UsersScreen()),
+      _HubItem('التقارير', Icons.bar_chart_rounded, (ctx) => const ReportsScreen()),
+      _HubItem('الإشعارات', Icons.notifications_rounded, (ctx) => const NotificationsScreen()),
+      _HubItem('الاشتراك', Icons.workspace_premium_rounded, (ctx) => const SubscriptionScreen()),
+      _HubItem('عن التطبيق', Icons.info_rounded, (ctx) => const AboutScreen()),
+    ];
+    return _HubList(title: 'المزيد', items: items);
+  }
+}
+
+class _HubItem {
+  final String label;
+  final IconData icon;
+  final WidgetBuilder builder;
+  _HubItem(this.label, this.icon, this.builder);
+}
+
+class _HubList extends StatelessWidget {
+  final String title;
+  final List<_HubItem> items;
+  const _HubList({required this.title, required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: Text(
+              title,
+              style: GoogleFonts.cairo(fontSize: 26, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return Card(
+                  margin: EdgeInsets.zero,
+                  child: ListTile(
+                    leading: Icon(item.icon, color: AppColors.primary),
+                    title: Text(item.label, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                    trailing: const Icon(Icons.chevron_left_rounded),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: item.builder));
+                    },
+                  ),
+                );
+              },
             ),
           ),
         ],
