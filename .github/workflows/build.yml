@@ -1,107 +1,141 @@
 name: Build & Release APK/AAB
 
 on:
-  push:
-    branches:
-      - main
+push:
+branches:
+- main
+pull_request:
+branches:
+- main
+workflow_dispatch:
 
-  pull_request:
-    branches:
-      - main
-
-  workflow_dispatch:
-
+concurrency:
+group: android-build-${{ github.ref }}
+cancel-in-progress: true
 
 jobs:
-  build-android:
+build-android:
+name: Build Android App
+runs-on: ubuntu-latest
+timeout-minutes: 30
 
-    name: Build Android App
+steps:
+  - name: 📥 Checkout repository
+    uses: actions/checkout@v4
 
-    runs-on: ubuntu-latest
+  - name: 🔧 Setup Java 17
+    uses: actions/setup-java@v4
+    with:
+      java-version: '17'
+      distribution: 'temurin'
 
-    timeout-minutes: 30
+  - name: 📱 Setup Flutter
+    uses: subosito/flutter-action@v2
+    with:
+      channel: stable
+      cache: true
 
+  - name: ✅ Flutter doctor
+    run: flutter doctor
 
-    steps:
+  - name: 📦 Get Flutter packages
+    run: flutter pub get
 
-      - name: 📥 Checkout repository
-        uses: actions/checkout@v4
+  - name: 🔍 Analyze Flutter code
+    run: flutter analyze || true
 
+  - name: 🧪 Run Flutter tests
+    run: flutter test || true
 
-      - name: 🔧 Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+  - name: 🔐 Configure release signing
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    run: |
+      set -e
 
+      if [ -z "$KEYSTORE_BASE64" ]; then
+        echo "⚠️ KEYSTORE_BASE64 is not configured."
+        echo "⚠️ Release APK will use debug signing."
+      else
+        echo "🔐 Decoding release keystore..."
 
-      - name: 📱 Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+        echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.jks
 
+        if [ ! -s android/app/release.jks ]; then
+          echo "❌ ERROR: release.jks was not created correctly."
+          exit 1
+        fi
 
-      - name: ✅ Flutter Doctor
-        run: flutter doctor
+        echo "🔎 Checking keystore..."
 
+        keytool -list \
+          -keystore android/app/release.jks \
+          -storepass "$KEYSTORE_PASSWORD" \
+          -alias "$KEY_ALIAS" \
+          > /tmp/keystore-check.txt
 
-      - name: 📦 Get Flutter packages
-        run: flutter pub get
+        echo "✅ Keystore password and alias are valid."
 
+        {
+          echo "storePassword=$KEYSTORE_PASSWORD"
+          echo "keyPassword=$KEY_PASSWORD"
+          echo "keyAlias=$KEY_ALIAS"
+          echo "storeFile=release.jks"
+        } > android/key.properties
 
-      - name: 🔍 Analyze code
-        run: flutter analyze || true
+        echo "✅ Release signing configured successfully."
+      fi
 
+  - name: 📱 Verify Android configuration
+    run: |
+      echo "Checking Android compileSdk configuration..."
+      grep -n "compileSdk" android/app/build.gradle.kts || true
+      grep -n "targetSdk" android/app/build.gradle.kts || true
 
-      - name: 🧪 Run tests
-        run: flutter test || true
+  - name: 🧹 Flutter clean
+    run: flutter clean
 
+  - name: 📦 Get packages again after clean
+    run: flutter pub get
 
-      - name: 🔐 Setup Release Signing
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+  - name: 🏗️ Build APK Release
+    run: flutter build apk --release
 
-        run: |
+  - name: 📦 Build AAB Release
+    run: flutter build appbundle --release
 
-          if [ -z "$KEYSTORE_BASE64" ]; then
+  - name: 📂 Upload APK
+    uses: actions/upload-artifact@v4
+    with:
+      name: customs-broker-app-release-apk
+      path: build/app/outputs/flutter-apk/app-release.apk
+      if-no-files-found: error
+      retention-days: 30
 
-            echo "⚠️ No keystore found. Using debug signing."
+  - name: 📂 Upload AAB
+    uses: actions/upload-artifact@v4
+    with:
+      name: customs-broker-app-release-aab
+      path: build/app/outputs/bundle/release/app-release.aab
+      if-no-files-found: error
+      retention-days: 30
 
-          else
-
-            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release.jks
-
-
-            echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
-            echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
-            echo "keyAlias=$KEY_ALIAS" >> android/key.properties
-            echo "storeFile=release.jks" >> android/key.properties
-
-
-            echo "✅ Release signing configured."
-
-          fi
-
-
-      - name: 🏗️ Build APK Release
-        run: flutter build apk --release
-
-
-      - name: 📦 Build AAB Release
-        run: flutter build appbundle --release
-
-
-      - name: 📂 Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
-
+  - name: 📊 Build summary
+    if: success()
+    run: |
+      echo "## ✅ Build completed successfully" >> "$GITHUB_STEP_SUMMARY"
+      echo "" >> "$GITHUB_STEP_SUMMARY"
+      echo "**Branch:** ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
+      echo "**Date:** $(date)" >> "$GITHUB_STEP_SUMMARY"
+      echo "" >> "$GITHUB_STEP_SUMMARY"
+      echo "### APK" >> "$GITHUB_STEP_SUMMARY"
+      ls -lh build/app/outputs/flutter-apk/app-release.apk >> "$GITHUB_STEP_SUMMARY"
+      echo "" >> "$GITHUB_STEP_SUMMARY"
+      echo "### AAB" >> "$GITHUB_STEP_SUMMARY"
+      ls -lh build/app/outputs/bundle/release/app-release.aab >> "$GITHUB_STEP_SUMMARY"
 
       - name: 📂 Upload AAB
         uses: actions/upload-artifact@v4
